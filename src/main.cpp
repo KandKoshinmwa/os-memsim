@@ -4,7 +4,7 @@
 #include <string>
 #include "mmu.h"
 #include "pagetable.h"
-
+#include <stringStream>
 // 64 MB (64 * 1024 * 1024)
 #define PHYSICAL_MEMORY 67108864
 
@@ -43,7 +43,68 @@ int main(int argc, char **argv)
     {
         // Handle command
         // TODO: implement this!
+        stringstream ss(command);
+        string cmd;
+        ss >> cmd;
+        if(cmd == "create"){
+            int text_size;
+            int data_size;
+            ss >> text_size >> data_size;
+            createProcess(text_size, data_size, mmu, page_table);
+            //either create Process will print the PID or we can add it here
+        }else if (cmd == "allocate"){
+            //allocate <PID> <var_name> <data_type> <number_of_elements>
+            uint32_t pid;
+            string var_name;
+            string data_type_str;
+            uint32_t num_elements;
 
+            ss >> pid >> var_name >> data_type_str >>num_elements;
+            DataType data_type;
+
+            if(data_type_str == "char"){
+                data_type = Char;
+            }else if(data_type_str == "short"){
+                data_type = Short;
+            }else if(data_type_str == "int"){
+                data_type = Int;
+            }else if(data_type_str == "float"){
+                data_type = Float;
+            }else if(data_type_str == "long"){
+                data_type = Long;
+        }     else if(data_type_str == "double"){
+                data_type = Double;
+            }else{
+                std::cout << "Invalid data type" << std::endl;
+                continue;
+            }
+            allocateVariable(pid, var_name, data_type, num_elements, mmu, page_table);
+        }else if (cmd == "set"){
+            //set <PID> <var_name> <offset> <value_0> <value_1> <value_2> ... <value_N>
+            uint32_t pid;
+            string var_name;
+            int offset;
+            int value;
+            vector <string> values;
+            string current_value;
+
+
+            ss>> pid>> var_name >> offset;
+            
+            while(ss >> current_value){
+                //we want to convert it to an integer here, change maybe needed if we implement parsing in the function.
+                values.push_back(current_value);
+            }
+            for(int i = 0; i < values.size(); i++){
+                setVariable(pid, var_name, offset + i, &values[i], mmu, page_table, memory);
+            }
+        }else if (cmd == "free"){
+        }else if (cmd == "terminate"){
+        }else if (cmd == "print"){
+            
+        }else{
+            std::cout << "Invalid command" << std::endl;
+        }
         // Get next command
         std::cout << "> ";
         std::getline(std::cin, command);
