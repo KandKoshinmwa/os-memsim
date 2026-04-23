@@ -1,6 +1,7 @@
 #include <iostream>
 #include <algorithm>
 #include "mmu.h"
+#include <iomanip>
 
 Mmu::Mmu(int memory_size)
 {
@@ -40,7 +41,7 @@ void Mmu::addVariableToProcess(uint32_t pid, std::string var_name, DataType type
         return p != nullptr && p->pid == pid; 
     });
 
-    if (proc != NULL)
+    if (proc != NULL)//it != _processes.end()
     {
         Variable *var = new Variable();
         var->name = var_name;
@@ -61,7 +62,16 @@ void Mmu::print()
     {
         for (j = 0; j < _processes[i]->variables.size(); j++)
         {
+            Variable* var = _processes[i]->variables[j];
             // TODO: print all variables (excluding those of type DataType::FreeSpace)
+            if (var->type != DataType::FreeSpace)
+            {
+                std::cout << std::left << std::setw(6) << _processes[i]->pid << "|"
+                          << " " << std::left << std::setw(14) << var->name << "|"
+                          << "   0x" << std::right << std::setfill('0') << std::setw(8) << std::hex << var->virtual_address << std::setfill(' ') << " |"
+                          << std::right << std::setw(12) << std::dec << var->size << std::endl;
+            }
+            //using printf
         }
     }
 }

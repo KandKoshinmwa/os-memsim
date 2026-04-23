@@ -110,7 +110,7 @@ int main(int argc, char **argv)
         std::getline(std::cin, command);
     }
 
-    // Cean up
+    // Clean up
     delete[] memory;
     delete mmu;
     delete page_table;
@@ -141,6 +141,7 @@ void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table
     //   - create new process in the MMU
     //   - allocate new variables for the <TEXT>, <GLOBALS>, and <STACK>
     //   - print pid
+  
 }
 
 void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table)
@@ -150,6 +151,7 @@ void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_
     //   - if no hole is large enough, allocate new page(s)
     //   - insert variable into MMU
     //   - print virtual memory address
+    
 }
 
 void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *value, Mmu *mmu, PageTable *page_table, uint8_t *memory)
@@ -159,6 +161,7 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
     //   - insert `value` into `memory` at physical address
     //   * note: this function only handles a single element (i.e. you'll need to call this within a loop when setting
     //           multiple elements of an array)
+    
 }
 
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table)
@@ -166,6 +169,7 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
     // TODO: implement this!
     //   - remove entry from MMU
     //   - free page if this variable was the only one on a given page
+    
 }
 
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table)
@@ -173,4 +177,5 @@ void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table)
     // TODO: implement this!
     //   - remove process from MMU
     //   - free all pages associated with given process
+    
 }

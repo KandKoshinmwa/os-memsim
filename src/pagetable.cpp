@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "pagetable.h"
+#include <iomanip>
 
 PageTable::PageTable(int page_size)
 {
@@ -67,6 +68,17 @@ void PageTable::print()
 
     for (i = 0; i < keys.size(); i++)
     {
-        // TODO: print all pages
+        size_t split = keys[i].find('|');
+        
+        // Extract the strings directly
+        std::string pid_str = keys[i].substr(0, split);
+        std::string page_str = keys[i].substr(split + 1);
+        
+        //  Get the Frame Number 
+        int frame_number = _table[keys[i]];
+        
+        std::cout << " " << std::left << std::setw(5) << pid_str << "|";
+        std::cout << std::right << std::setw(12) << page_str << " |";
+        std::cout << std::right << std::setw(14) << frame_number << std::endl;
     }
 }
