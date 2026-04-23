@@ -4,7 +4,8 @@
 #include <string>
 #include "mmu.h"
 #include "pagetable.h"
-#include <stringStream>
+#include <stringStream>// I have an error with this , its not part of the  C++ library
+                    // did you get any compilation issue on you side when writing your code
 // 64 MB (64 * 1024 * 1024)
 #define PHYSICAL_MEMORY 67108864
 
@@ -101,7 +102,17 @@ int main(int argc, char **argv)
         }else if (cmd == "free"){
         }else if (cmd == "terminate"){
         }else if (cmd == "print"){
-            
+            // get the parameter based on how you worked stringstream
+            string par;
+            ss >> par;
+            if(par == "mmu"){
+                mmu.print();
+            }
+            else if (par == "page"){
+                pagetable.print();
+            }
+            //Error handling: Should we add error message if use input "print <wrong name>", even on other cmds
+           
         }else{
             std::cout << "Invalid command" << std::endl;
         }

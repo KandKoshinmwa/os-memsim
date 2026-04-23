@@ -1,7 +1,6 @@
 #include <iostream>
 #include <algorithm>
 #include "mmu.h"
-#include <iomanip>
 
 Mmu::Mmu(int memory_size)
 {
@@ -66,10 +65,11 @@ void Mmu::print()
             // TODO: print all variables (excluding those of type DataType::FreeSpace)
             if (var->type != DataType::FreeSpace)
             {
-                std::cout << std::left << std::setw(6) << _processes[i]->pid << "|"
-                          << " " << std::left << std::setw(14) << var->name << "|"
-                          << "   0x" << std::right << std::setfill('0') << std::setw(8) << std::hex << var->virtual_address << std::setfill(' ') << " |"
-                          << std::right << std::setw(12) << std::dec << var->size << std::endl;
+                printf("%-5d | %-13s |   0x%08x | %10d\n", 
+                       _processes[i]->pid, 
+                       var->name.c_str(),     // Remember .c_str() for std::string!
+                       var->virtual_address, 
+                       var->size);
             }
             //using printf
         }

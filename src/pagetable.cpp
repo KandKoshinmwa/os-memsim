@@ -1,6 +1,6 @@
 #include <algorithm>
 #include "pagetable.h"
-#include <iomanip>
+
 
 PageTable::PageTable(int page_size)
 {
@@ -31,7 +31,7 @@ void PageTable::addEntry(uint32_t pid, int page_number)
     // Combination of pid and page number act as the key to look up frame number
     std::string entry = std::to_string(pid) + "|" + std::to_string(page_number);
 
-    int frame = 0; 
+    int frame = _table.size(); 
     // Find free frame
     // TODO: implement this!
     _table[entry] = frame;
@@ -41,8 +41,8 @@ int PageTable::getPhysicalAddress(uint32_t pid, uint32_t virtual_address)
 {
     // Convert virtual address to page_number and page_offset
     // TODO: implement this!
-    int page_number = 0;
-    int page_offset = 0;
+    int page_number = virtual_address / _page_size;
+    int page_offset = virtual_address % _page_size;
 
     // Combination of pid and page number act as the key to look up frame number
     std::string entry = std::to_string(pid) + "|" + std::to_string(page_number);
@@ -52,6 +52,8 @@ int PageTable::getPhysicalAddress(uint32_t pid, uint32_t virtual_address)
     if (_table.count(entry) > 0)
     {
         // TODO: implement this!
+        int frame_number = _table[entry];
+        address = (frame_number * _page_size) + page_offset;
     }
 
     return address;
@@ -77,8 +79,9 @@ void PageTable::print()
         //  Get the Frame Number 
         int frame_number = _table[keys[i]];
         
-        std::cout << " " << std::left << std::setw(5) << pid_str << "|";
-        std::cout << std::right << std::setw(12) << page_str << " |";
-        std::cout << std::right << std::setw(14) << frame_number << std::endl;
+        printf(" %-4s | %11s | %13d\n", 
+               pid_str.c_str(), 
+               page_str.c_str(), 
+               frame_number);
     }
 }
