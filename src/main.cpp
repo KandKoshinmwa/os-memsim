@@ -5,6 +5,8 @@
 #include "mmu.h"
 #include "pagetable.h"
 #include <sstream>
+#include <vector>
+
 
 // 64 MB (64 * 1024 * 1024)
 #define PHYSICAL_MEMORY 67108864
@@ -45,8 +47,8 @@ int main(int argc, char **argv)
         // Handle command
         // TODO: implement this!
 
-        stringstream ss(command);
-        string cmd;
+        std::stringstream ss(command);
+        std::string cmd;
         ss >> cmd;
 
         if(cmd == "create"){
@@ -59,8 +61,8 @@ int main(int argc, char **argv)
         }else if (cmd == "allocate"){
             //allocate <PID> <var_name> <data_type> <number_of_elements>
             uint32_t pid;
-            string var_name;
-            string data_type_str;
+            std::string var_name;
+            std::string data_type_str;
             uint32_t num_elements;
 
             ss >> pid >> var_name >> data_type_str >>num_elements;
@@ -86,11 +88,11 @@ int main(int argc, char **argv)
         }else if (cmd == "set"){
             //set <PID> <var_name> <offset> <value_0> <value_1> <value_2> ... <value_N>
             uint32_t pid;
-            string var_name;
+            std::string var_name;
             int offset;
             int value;
-            vector <string> values;
-            string current_value;
+            std::vector<std::string> values;
+            std::string current_value;
 
 
             ss>> pid>> var_name >> offset;
@@ -106,13 +108,13 @@ int main(int argc, char **argv)
         }else if (cmd == "terminate"){
         }else if (cmd == "print"){
             // get the parameter based on how you worked stringstream
-            string par;
+            std::string par;
             ss >> par;
             if(par == "mmu"){
-                mmu.print();
+                mmu ->print();
             }
             else if (par == "page"){
-                pagetable.print();
+                page_table->print();
             }
             //Error handling: Should we add error message if use input "print <wrong name>", even on other cmds
            
@@ -156,9 +158,9 @@ void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table
         uint32_t pid = mmu->createProcess();
     //   - allocate new variables for the <TEXT>, <GLOBALS>, and <STACK>
     //NOTE: will need to implement allocateVariable() first for this to work
-    allocateVariable(pid, "<TEXT>", DataType::Text, text_size, mmu, page_table);
-    allocateVariable(pid, "<GLOBALS>", DataType::Globals, data_size, mmu, page_table);
-    allocateVariable(pid, "<STACK>", DataType::Stack, 1024, mmu, page_table);
+    //allocateVariable(pid, "<TEXT>", DataType::Text, text_size, mmu, page_table);
+    //allocateVariable(pid, "<GLOBALS>", DataType::Globals, data_size, mmu, page_table);
+    //allocateVariable(pid, "<STACK>", DataType::Stack, 1024, mmu, page_table);
 
     std::cout << "Created process with PID: " << pid << std::endl;
 }
