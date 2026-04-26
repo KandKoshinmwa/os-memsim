@@ -66,25 +66,27 @@ int main(int argc, char **argv)
             uint32_t num_elements;
 
             ss >> pid >> var_name >> data_type_str >>num_elements;
-            DataType data_type;
+            
+            DataType type;
 
             if(data_type_str == "char"){
-                data_type = Char;
+                type= DataType::Char;
             }else if(data_type_str == "short"){
-                data_type = Short;
+                type = DataType::Short;
             }else if(data_type_str == "int"){
-                data_type = Int;
+               type = DataType::Int;
             }else if(data_type_str == "float"){
-                data_type = Float;
+                type = DataType::Float;
             }else if(data_type_str == "long"){
-                data_type = Long;
+                type = DataType::Long;
         }     else if(data_type_str == "double"){
-                data_type = Double;
+                type = DataType::Double;
             }else{
                 std::cout << "Invalid data type" << std::endl;
-                continue;
+                 std::cout << "> ";
+                std::getline(std::cin, command);
             }
-            allocateVariable(pid, var_name, data_type, num_elements, mmu, page_table);
+            allocateVariable(pid, var_name, type, num_elements, mmu, page_table);
         }else if (cmd == "set"){
             //set <PID> <var_name> <offset> <value_0> <value_1> <value_2> ... <value_N>
             uint32_t pid;
@@ -105,7 +107,18 @@ int main(int argc, char **argv)
                 setVariable(pid, var_name, offset + i, &values[i], mmu, page_table, memory);
             }
         }else if (cmd == "free"){
+            uint32_t pid;
+            std::string var_name;
+            ss >> pid >> var_name;
+
+            freeVariable(pid,var_name,mmu,page_table);
+
         }else if (cmd == "terminate"){
+            uint32_t pid;
+
+            ss >> pid;
+            terminateProcess(pid,mmu,page_table);
+
         }else if (cmd == "print"){
             // get the parameter based on how you worked stringstream
             std::string par;
@@ -158,9 +171,9 @@ void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table
         uint32_t pid = mmu->createProcess();
     //   - allocate new variables for the <TEXT>, <GLOBALS>, and <STACK>
     //NOTE: will need to implement allocateVariable() first for this to work
-    //allocateVariable(pid, "<TEXT>", DataType::Text, text_size, mmu, page_table);
-    //allocateVariable(pid, "<GLOBALS>", DataType::Globals, data_size, mmu, page_table);
-    //allocateVariable(pid, "<STACK>", DataType::Stack, 1024, mmu, page_table);
+    allocateVariable(pid, "<TEXT>", DataType::Text, text_size, mmu, page_table);
+    allocateVariable(pid, "<GLOBALS>", DataType::Globals, data_size, mmu, page_table);
+    allocateVariable(pid, "<STACK>", DataType::Stack, 1024, mmu, page_table);
 
     std::cout << "Created process with PID: " << pid << std::endl;
 }
@@ -194,5 +207,6 @@ void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table)
 {
     // TODO: implement this!
     //   - remove process from MMU
+    
     //   - free all pages associated with given process
 }
