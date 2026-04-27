@@ -33,6 +33,8 @@ public:
     void addVariableToProcess(uint32_t pid, std::string var_name, DataType type, uint32_t size, uint32_t address);
     void print();
     Process* getProcess(uint32_t pid);
+    std::vector<std::string> getVariableNamesForProcess(uint32_t pid);
+    void removeProcess(uint32_t pid);
 };
 
 #endif // __MMU_H_

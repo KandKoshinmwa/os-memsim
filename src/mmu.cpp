@@ -87,3 +87,42 @@ Process* Mmu::getProcess(uint32_t pid)
     }
     return nullptr;
 }
+
+//freeVariable helper function to remove variable from process to return a vector of variable
+//names
+std::vector<std::string> Mmu::getVariableNamesForProcess(uint32_t pid){
+    std::vector<std::string> namesOfVariables;
+
+    for(int i = 0; i < _processes.size(); i++){
+        if(_processes[i]->pid == pid){
+            for(int j = 0; j < _processes[i]->variables.size(); j++){
+                namesOfVariables.push_back(_processes[i]->variables[j]->name);
+            }
+            //need to have a break here if we found the process.
+            break;
+        }
+    }
+    return namesOfVariables;
+}
+//terminateProcess helper function to remove all pages associated with given process
+void Mmu::removeProcess(uint32_t pid)
+{
+    std::vector<Process*>::iterator it = std::find_if(_processes.begin(), _processes.end(), [pid](Process* p)
+    { 
+        return p != nullptr && p->pid == pid; 
+    });
+
+    if (it != _processes.end())
+    {
+        Process *proc = *it; 
+        
+        for (int i = 0; i < proc->variables.size(); i++)
+        {
+            delete proc->variables[i];
+        }
+        proc->variables.clear(); 
+
+        delete proc; 
+                _processes.erase(it); 
+    }
+}

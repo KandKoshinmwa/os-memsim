@@ -321,8 +321,13 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
 
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table)
 {
-    // TODO: implement this!
-    //   - remove process from MMU
-    
-    //   - free all pages associated with given process
+     //Notes: we just want to loop through and free all variables associated with the process,
+    // then we can call the removeProcess function to remove the process 
+    //and all of its pages from the MMU and page table.
+    std::vector<std::string> var_names = mmu->getVariableNamesForProcess(pid);
+    for(int i = 0; i < var_names.size(); i++){
+        freeVariable(pid, var_names[i], mmu, page_table);
+    }
+    mmu->removeProcess(pid);
 }
+
