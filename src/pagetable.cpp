@@ -31,7 +31,18 @@ void PageTable::addEntry(uint32_t pid, int page_number)
     // Combination of pid and page number act as the key to look up frame number
     std::string entry = std::to_string(pid) + "|" + std::to_string(page_number);
 
-    int frame = _table.size(); 
+    std::vector<int> used_frames;
+    for (auto const& pair : _table) {
+        used_frames.push_back(pair.second);
+    }
+    std::sort(used_frames.begin(), used_frames.end());
+
+    int frame = 0;
+    for (int used : used_frames) {
+        if (frame == used) {
+            frame++; 
+        }
+    }
     // Find free frame
     // TODO: implement this!
     _table[entry] = frame;
@@ -84,4 +95,9 @@ void PageTable::print()
                page_str.c_str(), 
                frame_number);
     }
+}
+void PageTable::removeEntry(uint32_t pid, int page_number)
+{
+    std::string entry = std::to_string(pid) + "|" + std::to_string(page_number);
+    _table.erase(entry);
 }

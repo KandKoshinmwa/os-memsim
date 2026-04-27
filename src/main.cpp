@@ -317,6 +317,53 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
     // TODO: implement this!
     //   - remove entry from MMU
     //   - free page if this variable was the only one on a given page
+  Process* proc = mmu->getProcess(pid);
+    if (proc == nullptr) return;
+
+    uint32_t var_address = 0;
+    uint32_t var_size = 0;
+    bool found = false;
+
+    // Iterator i
+    for (auto i = proc->variables.begin(); i != proc->variables.end(); ++i) {
+        if ((*i)->name == var_name && (*i)->type != DataType::FreeSpace) {
+            var_address = (*i)->virtual_address;
+            var_size = (*i)->size;
+            found = true;
+
+            (*i)->name = "<FREE_SPACE>";
+            (*i)->type = DataType::FreeSpace;
+            break; 
+        }
+    }
+
+    if (!found) return; 
+
+    uint32_t page_size = page_table->getPageSize();
+    uint32_t start_page = var_address / page_size;
+    uint32_t end_page = (var_address + var_size - 1) / page_size;
+
+    for (uint32_t current_page = start_page; current_page <= end_page; ++current_page) {
+        bool page_in_use = false;
+
+        for (int i = 0; i < proc->variables.size(); ++i) {
+            Variable* rem_var = proc->variables[i];
+            
+            if (rem_var->type == DataType::FreeSpace) continue; 
+
+            uint32_t rem_start = rem_var->virtual_address / page_size;
+            uint32_t rem_end = (rem_var->virtual_address + rem_var->size - 1) / page_size;
+
+            if (current_page >= rem_start && current_page <= rem_end) {
+                page_in_use = true;
+                break; 
+            }
+        }
+
+        if (!page_in_use) {
+            page_table->removeEntry(pid, current_page); 
+        }
+    }
 }
 
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table)
