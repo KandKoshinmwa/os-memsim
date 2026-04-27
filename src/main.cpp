@@ -279,9 +279,7 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
         return;
     }
     //   - insert `value` into `memory` at physical address
-    uint32_t virtual_address = var-> virtual_address + offset; // calculate virtual address
     
-    int physical_add = page_table->getPhysicalAddress(pid, var->virtual_address + offset); // convert to physical
     
     //get element size based on data type
     uint32_t element_size = 0;
@@ -308,8 +306,15 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
             element_size = 1;
             break;
     }
+    uint32_t virtual_address = var-> virtual_address + (element_size * offset); // calculate virtual address
+    
+    int physical_add = page_table->getPhysicalAddress(pid, virtual_address);
+    if(physical_add == -1){
+        std::cout << "error invalid address" << std::endl;
+        return;
+    }
     memcpy(&memory[physical_add], value, element_size); // copy value to memory
-}
+}   
 
 
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table)
