@@ -75,3 +75,15 @@ void Mmu::print()
         }
     }
 }
+Process* Mmu::getProcess(uint32_t pid)
+{
+    std::vector<Process*>::iterator it = std::find_if(_processes.begin(), _processes.end(), [pid](Process* p)
+    { 
+      return p != nullptr && p->pid == pid;
+    });
+    if (it != _processes.end())
+    {
+        return *it;
+    }
+    return nullptr;
+}

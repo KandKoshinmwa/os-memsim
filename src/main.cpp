@@ -171,30 +171,146 @@ void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table
         uint32_t pid = mmu->createProcess();
     //   - allocate new variables for the <TEXT>, <GLOBALS>, and <STACK>
     //NOTE: will need to implement allocateVariable() first for this to work
-    allocateVariable(pid, "<TEXT>", DataType::Text, text_size, mmu, page_table);
-    allocateVariable(pid, "<GLOBALS>", DataType::Globals, data_size, mmu, page_table);
-    allocateVariable(pid, "<STACK>", DataType::Stack, 1024, mmu, page_table);
+    allocateVariable(pid, "<TEXT>", DataType::Char, text_size, mmu, page_table);
+    allocateVariable(pid, "<GLOBALS>", DataType::Char, data_size, mmu, page_table);
+    allocateVariable(pid, "<STACK>", DataType::Char, 1024, mmu, page_table);
 
     std::cout << "Created process with PID: " << pid << std::endl;
 }
 
 void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table)
 {
-    // TODO: implement this!
-    //   - find first free space within a page already allocated to this process that is large enough to fit the new variable
-    //   - if no hole is large enough, allocate new page(s)
-    //   - insert variable into MMU
-    //   - print virtual memory address
+   // get process 
+   Process* proc = mmu->getProcess(pid);
+   if(proc == nullptr){
+        std::cout << "error process not found" << std::endl;
+        return;
+    }
+    //calculate size of variable
+    uint32_t size = 0;
+    switch(type){
+        case DataType::Char:
+            size = 1;
+            break;
+        case DataType::Short:
+            size = 2;
+            break;
+        case DataType::Int:
+            size = 4;
+            break;
+        case DataType::Float:
+            size = 4;
+            break;
+        case DataType::Long:
+            size = 8;
+            break;
+        case DataType::Double:
+            size = 8;
+            break;
+        default:
+            size = num_elements;
+            break;
 }
+size *= num_elements;
+
+//find the first free hole
+uint32_t allocated_size = 0;
+bool found = false;
+
+for (int i = 0; i < proc->variables.size(); i++){
+    Variable* var = proc->variables[i];
+    
+    if(var->type == DataType::FreeSpace && var->size >= size){
+        allocated_size = var->virtual_address;
+
+        //shrink the free space variable
+        var->virtual_address += size;
+        var->size -= size;
+
+        found = true;
+        break;
+    }
+}
+
+//if no free hole found, allocate new page
+if(!found){
+    //find last variable and allocate after it
+    uint32_t last_address = 0;
+    for (int i = 0; i < proc->variables.size(); i++){
+        uint32_t end_address = proc->variables[i]->virtual_address + proc->variables[i]->size;
+        if(end_address > last_address){
+            last_address = end_address;
+        }
+    }
+    allocated_size = last_address;
+
+    //add page table entry for new page
+    int page_needed = (size + page_table->getPageSize() - 1) / page_table->getPageSize();
+    int start_page = allocated_size / page_table->getPageSize();
+    for(int i = 0; i < page_needed; i++){
+        page_table->addEntry(pid, start_page + i);
+    }
+}
+
+    //print and insert MMU entry
+    mmu->addVariableToProcess(pid, var_name, type, size, allocated_size);
+    std::cout << allocated_size << std::endl;
+}
+
 
 void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *value, Mmu *mmu, PageTable *page_table, uint8_t *memory)
 {
-    // TODO: implement this!
+    //get process
+    Process* proc = mmu->getProcess(pid);
+    if(proc == nullptr){
+        std::cout << "error process not found" << std::endl;
+        return;
+    }
     //   - look up physical address for variable based on its virtual address / offset
+    Variable *var = nullptr;
+    for (int i = 0; i < proc->variables.size(); i++){
+        if(proc->variables[i]->name == var_name){
+            var = proc->variables[i];
+            break;
+        }
+    }
+    if (var== nullptr){
+        std::cout << "error variable not found" << std::endl;
+        return;
+    }
     //   - insert `value` into `memory` at physical address
-    //   * note: this function only handles a single element (i.e. you'll need to call this within a loop when setting
-    //           multiple elements of an array)
+    uint32_t virtual_address = var-> virtual_address + offset; // calculate virtual address
+    
+    int physical_add = page_table->getPhysicalAddress(pid, var->virtual_address + offset); // convert to physical
+    
+    //get element size based on data type
+    uint32_t element_size = 0;
+    switch(var->type){
+        case DataType::Char:
+            element_size = 1;
+            break;
+        case DataType::Short:
+            element_size = 2;
+            break;
+        case DataType::Int:
+            element_size = 4;
+            break;
+        case DataType::Float:
+            element_size = 4;
+            break;
+        case DataType::Long:
+            element_size = 8;
+            break;
+        case DataType::Double:
+            element_size = 8;
+            break;
+        default:
+            element_size = 1;
+            break;
+    }
+    memcpy(&memory[physical_add], value, element_size); // copy value to memory
 }
+
 
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table)
 {
