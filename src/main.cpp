@@ -141,7 +141,7 @@ int main(int argc, char **argv)
                 uint32_t pidPrint = std::stoi(par.substr(0, colon_pos));
                 std::string printVar_name = par.substr(colon_pos + 1);
                 
-                std::cout << "Need to print " << printVar_name << " for PID " << pidPrint << std::endl;
+                printVariableValue(pidPrint, printVar_name, mmu, page_table, memory);
             } else {
                 //Error handling: Should we add error message if use input "print <wrong name>", even on other cmds
                 std::cout << "Invalid print command" << std::endl;
