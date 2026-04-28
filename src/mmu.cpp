@@ -125,3 +125,9 @@ void Mmu::removeProcess(uint32_t pid)
     }
 }
 
+//helper method for getting processes
+std::vector<Process*> Mmu::getProcesses()
+{
+    return _processes;
+}
+

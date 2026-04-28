@@ -35,6 +35,7 @@ public:
     Process* getProcess(uint32_t pid);
     std::vector<std::string> getVariableNamesForProcess(uint32_t pid);
     void removeProcess(uint32_t pid);
+    std::vector<Process*> getProcesses(); 
 };
 
 #endif // __MMU_H_
