@@ -88,3 +88,39 @@ Process* Mmu::getProcess(uint32_t pid)
     return nullptr;
 }
 
+std::vector<std::string> Mmu::getVariableNamesForProcess(uint32_t pid)
+{
+    std::vector<std::string> names;
+    for (int i = 0; i < _processes.size(); i++)
+    {
+        if (_processes[i]->pid == pid)
+        {
+            for (int j = 0; j < _processes[i]->variables.size(); j++)
+            {
+                names.push_back(_processes[i]->variables[j]->name);
+            }
+            break;
+        }
+    }
+    return names;
+}
+
+void Mmu::removeProcess(uint32_t pid)
+{
+    for (auto it = _processes.begin(); it != _processes.end(); ++it)
+    {
+        if ((*it)->pid == pid)
+        {
+            // Free the memory allocated for the variables array
+            for (int i = 0; i < (*it)->variables.size(); i++) {
+                delete (*it)->variables[i];
+            }
+            // Free the process itself
+            delete *it;
+            // Remove the pointer from the vector
+            _processes.erase(it);
+            break;
+        }
+    }
+}
+
