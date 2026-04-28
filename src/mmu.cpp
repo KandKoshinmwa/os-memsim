@@ -33,8 +33,7 @@ uint32_t Mmu::createProcess()
 
 void Mmu::addVariableToProcess(uint32_t pid, std::string var_name, DataType type, uint32_t size, uint32_t address)
 {
-    //int i;
-    //Process *proc = NULL;
+   
     std::vector<Process*>::iterator it = std::find_if(_processes.begin(), _processes.end(), [pid](Process* p)
     { 
         return p != nullptr && p->pid == pid; 
@@ -68,40 +67,50 @@ void Mmu::print()
             {
                 printf("%-5d | %-13s |   0x%08X | %10d\n", 
                        _processes[i]->pid, 
-                       var->name.c_str(),     // Remember .c_str() for std::string!
+                       var->name.c_str(),     // .c_str() for std::string
                        var->virtual_address, 
                        var->size);
             }
-            //using printf
+            
         }
     }
 }
 Process* Mmu::getProcess(uint32_t pid)
 {
+    // Search process list for a matching PID using an iterator
     std::vector<Process*>::iterator it = std::find_if(_processes.begin(), _processes.end(), [pid](Process* p)
     { 
       return p != nullptr && p->pid == pid;
     });
+
+    // If a match is found, return the pointer to the process
     if (it != _processes.end())
     {
         return *it;
     }
+
+    // Return null if the process does not exist
     return nullptr;
 }
 
 std::vector<std::string> Mmu::getVariableNamesForProcess(uint32_t pid)
 {
     std::vector<std::string> names;
+
+    // Iterate through all processes to locate the target PID
     for (int i = 0; i < _processes.size(); i++)
     {
         if (_processes[i]->pid == pid)
         {
+            // Loop through all variables inside the found process
             for (int j = 0; j < _processes[i]->variables.size(); j++)
             {
+                // Only collect active variable names, ignoring memory holes
                 if (_processes[i]->variables[j]->type != DataType::FreeSpace) {
                     names.push_back(_processes[i]->variables[j]->name);
                 }
             }
+            // Stop searching once the target process is handled
             break;
         }
     }

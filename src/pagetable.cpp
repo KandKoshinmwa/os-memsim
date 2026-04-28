@@ -30,28 +30,32 @@ void PageTable::addEntry(uint32_t pid, int page_number)
 {
     // Combination of pid and page number act as the key to look up frame number
     std::string entry = std::to_string(pid) + "|" + std::to_string(page_number);
+    
 
+    // Collect all currently assigned physical frame numbers
     std::vector<int> used_frames;
     for (auto const& pair : _table) {
         used_frames.push_back(pair.second);
     }
+
+    // Sort frames to efficiently find the lowest available gap
     std::sort(used_frames.begin(), used_frames.end());
 
+    // Find the lowest available frame number to recycle freed memory safely
     int frame = 0;
     for (int used : used_frames) {
         if (frame == used) {
             frame++; 
         }
     }
-    // Find free frame
-    // TODO: implement this!
+
+    // Map the virtual page entry to the newly assigned physical frame
     _table[entry] = frame;
 }
 
 int PageTable::getPhysicalAddress(uint32_t pid, uint32_t virtual_address)
 {
     // Convert virtual address to page_number and page_offset
-    // TODO: implement this!
     int page_number = virtual_address / _page_size;
     int page_offset = virtual_address % _page_size;
 
@@ -62,7 +66,6 @@ int PageTable::getPhysicalAddress(uint32_t pid, uint32_t virtual_address)
     int address = -1;
     if (_table.count(entry) > 0)
     {
-        // TODO: implement this!
         int frame_number = _table[entry];
         address = (frame_number * _page_size) + page_offset;
     }
@@ -81,6 +84,7 @@ void PageTable::print()
 
     for (i = 0; i < keys.size(); i++)
     {
+        // Locate the delimiter separating the PID and Page Number
         size_t split = keys[i].find('|');
         
         // Extract the strings directly
@@ -98,6 +102,9 @@ void PageTable::print()
 }
 void PageTable::removeEntry(uint32_t pid, int page_number)
 {
+    // Reconstruct the unique map key for the specific page
     std::string entry = std::to_string(pid) + "|" + std::to_string(page_number);
+
+    // Erase the mapping from the table to free up the frame
     _table.erase(entry);
 }

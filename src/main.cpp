@@ -18,6 +18,7 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table);
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table);
 void printVariableValue(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table, uint8_t *memory);
+
 int main(int argc, char **argv)
 {
     // Ensure user specified page size as a command line parameter
@@ -45,22 +46,20 @@ int main(int argc, char **argv)
     
     while (command != "exit")
     {
-        // Handle command
-        // TODO: implement this!
- 
+        // Parse the incoming command string
         std::stringstream ss(command);
         std::string cmd;
         ss >> cmd;
 
+        // Command routing
         if (cmd == "create") {
             int text_size;
             int data_size;
             ss >> text_size >> data_size;
             createProcess(text_size, data_size, mmu, page_table);
-            //either create Process will print the PID or we can add it here
             
         } else if (cmd == "allocate") {
-            //allocate <PID> <var_name> <data_type> <number_of_elements>
+            // allocate <PID> <var_name> <data_type> <number_of_elements>
             uint32_t pid;
             std::string var_name;
             std::string data_type_str;
@@ -68,8 +67,8 @@ int main(int argc, char **argv)
 
             ss >> pid >> var_name >> data_type_str >> num_elements;
             
+            // Map the string input to the DataType enum
             DataType type;
-
             if (data_type_str == "char") {
                 type= DataType::Char;
             } else if (data_type_str == "short") {
@@ -90,7 +89,7 @@ int main(int argc, char **argv)
             allocateVariable(pid, var_name, type, num_elements, mmu, page_table);
             
         } else if (cmd == "set") {
-            //set <PID> <var_name> <offset> <value_0> <value_1> <value_2> ... <value_N>
+            // set <PID> <var_name> <offset> <value_0> <value_1> <value_2> ... <value_N>
             uint32_t pid;
             std::string var_name;
             int offset;
@@ -100,10 +99,11 @@ int main(int argc, char **argv)
 
             ss >> pid >> var_name >> offset;
             
+            // Collect all trailing value arguments
             while (ss >> current_value) {
-                //we want to convert it to an integer here, change maybe needed if we implement parsing in the function.
                 values.push_back(current_value);
             }
+            // Sequentially set each value in memory, incrementing the offset
             for (int i = 0; i < values.size(); i++) {
                 setVariable(pid, var_name, offset + i, &values[i], mmu, page_table, memory);
             }
@@ -126,6 +126,7 @@ int main(int argc, char **argv)
             std::string par;
             ss >> par;
             
+            // Route the print command to the appropriate helper
             if (par == "mmu") {
                 mmu->print();
             } else if (par == "page") {
@@ -136,18 +137,18 @@ int main(int argc, char **argv)
                     std::cout << processes[i]->pid << std::endl;
                 }
             } else if (par.find(":") != std::string::npos) {
+                // Split the <PID>:<var_name> format
                 size_t colon_pos = par.find(":");
-
                 uint32_t pidPrint = std::stoi(par.substr(0, colon_pos));
                 std::string printVar_name = par.substr(colon_pos + 1);
                 
                 printVariableValue(pidPrint, printVar_name, mmu, page_table, memory);
             } else {
-                //Error handling: Should we add error message if use input "print <wrong name>", even on other cmds
                 std::cout << "Invalid print command" << std::endl;
             }
             
         } else {
+            // Error handling for completely invalid top-level commands
             std::cout << "error: command not recognized" << std::endl;
         }
 
@@ -183,33 +184,36 @@ void printStartMessage(int page_size)
 
 void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table)
 {
-    // TODO: implement this!
-    //   - create new process in the MMU
+    // create new process in the MMU and fetch its PID
     uint32_t pid = mmu->createProcess();
-    //   - allocate new variables for the <TEXT>, <GLOBALS>, and <STACK>
-    //NOTE: will need to implement allocateVariable() first for this to work
+    
+    // allocate new required system variables for the <TEXT>, <GLOBALS>, and <STACK>
     allocateVariable(pid, "<TEXT>", DataType::Char, text_size, mmu, page_table);
     allocateVariable(pid, "<GLOBALS>", DataType::Char, data_size, mmu, page_table);
     allocateVariable(pid, "<STACK>", DataType::Char, 65536, mmu, page_table);
 
+    // Output only the PID for successful creation
     std::cout << pid << std::endl;
 }
 
 void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table)
 {
-   // get process 
+   // Validate the process exists 
    Process* proc = mmu->getProcess(pid);
    if(proc == nullptr){
         std::cout << "error: process not found" << std::endl;
         return;
     }
+    
+    // Prevent duplicate variable names within the same process
     for (int i = 0; i < proc->variables.size(); i++){
         if(proc->variables[i]->name == var_name){
             std::cout << "error: variable already exists" << std::endl;
             return;
         }
     }
-    //calculate size of variable
+    
+    // calculate total size of variable based on data type bounds
     uint32_t size = 0;
     switch(type){
         case DataType::Char:
@@ -233,79 +237,78 @@ void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_
         default:
             size = num_elements;
             break;
-}
-size *= num_elements;
-
-//find the first free hole
-uint32_t allocated_address = 0;
-bool found = false;
-Variable* target_free_space = nullptr; // Track the hole so we can safely shrink it later
-
-for (int i = 0; i < proc->variables.size(); i++){
-    Variable* var = proc->variables[i];
-    
-    if(var->type == DataType::FreeSpace && var->size >= size){
-        allocated_address = var->virtual_address;
-        target_free_space = var;
-        found = true;
-        break; // First fit algorithm
     }
-}
+    size *= num_elements;
 
-//if no free hole found, we are out of memory print an error message
-if(!found){
-    std::cout << "error: out of memory" << std::endl;
-        return;
-}
+    // Track state for finding memory holes
+    uint32_t allocated_address = 0;
+    bool found = false;
+    Variable* target_free_space = nullptr; // Track the hole so we can safely shrink it later
 
-// Check if it does not exceed mem size
-if (allocated_address + size > PHYSICAL_MEMORY) {
-        std::cout << "error: out of memory" << std::endl;
-        return; 
-}
-
-// Safe to Shrink the free space
-
-target_free_space->virtual_address += size;
-target_free_space->size -= size;
-
-
-//add page table entry for new page
-uint32_t start_page = allocated_address / page_table->getPageSize();
-//added end_page to make sure we are finding the page in case the byte size goes over multiple pages.
-uint32_t end_page = (allocated_address + size - 1) / page_table->getPageSize();
-
-
-//changed loop to start at the starting page until the ending page.
-for(uint32_t current_page = start_page; current_page <= end_page; current_page++){
-    uint32_t physical_address = current_page * page_table->getPageSize();
-
-    // If page does not exist yet, allocate a new one
-        if(page_table->getPhysicalAddress(pid, physical_address) == -1){
-        page_table->addEntry(pid, current_page);
+    // Iterate to find the first free hole (First Fit Algorithm)
+    for (int i = 0; i < proc->variables.size(); i++){
+        Variable* var = proc->variables[i];
+        
+        if(var->type == DataType::FreeSpace && var->size >= size){
+            allocated_address = var->virtual_address;
+            target_free_space = var;
+            found = true;
+            break; // First fit algorithm stops at first match
         }
-}
+    }
+
+    // if no free hole found, we are out of memory print an error message
+    if(!found){
+        std::cout << "error: out of memory" << std::endl;
+            return;
+    }
+
+    // Check if the allocation physically exceeds the maximum system boundary
+    if (allocated_address + size > PHYSICAL_MEMORY) {
+            std::cout << "error: out of memory" << std::endl;
+            return; 
+    }
+
+    // Safe to Shrink the free space now that bounds are confirmed
+    target_free_space->virtual_address += size;
+    target_free_space->size -= size;
+
+    // Calculate logical page boundaries for the new allocation
+    uint32_t start_page = allocated_address / page_table->getPageSize();
+    uint32_t end_page = (allocated_address + size - 1) / page_table->getPageSize();
 
 
-//print and insert MMU entry
-mmu->addVariableToProcess(pid, var_name, type, size, allocated_address);
-//Only print address
-if (var_name != "<TEXT>" && var_name != "<GLOBALS>" && var_name != "<STACK>") {
-    std::cout << allocated_address << std::endl;
-}
+    // Map necessary pages in the page table across the entire span
+    for(uint32_t current_page = start_page; current_page <= end_page; current_page++){
+        uint32_t physical_address = current_page * page_table->getPageSize();
+
+        // If page does not exist yet, allocate a new one
+            if(page_table->getPhysicalAddress(pid, physical_address) == -1){
+            page_table->addEntry(pid, current_page);
+            }
+    }
+
+
+    // Print and insert MMU entry tracking
+    mmu->addVariableToProcess(pid, var_name, type, size, allocated_address);
+    
+    // Only print address for user-defined variables (hiding system vars)
+    if (var_name != "<TEXT>" && var_name != "<GLOBALS>" && var_name != "<STACK>") {
+        std::cout << allocated_address << std::endl;
+    }
 }
 
 
 void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *value, Mmu *mmu, PageTable *page_table, uint8_t *memory)
 {
-    
-    //get process
+    // Validate the process exists
     Process* proc = mmu->getProcess(pid);
     if(proc == nullptr){
         std::cout << "error: process not found" << std::endl;
         return;
     }
-    //   - look up physical address for variable based on its virtual address / offset
+    
+    // look up variable by name, ignoring FreeSpace holes
     Variable *var = nullptr;
     for (int i = 0; i < proc->variables.size(); i++){
         if(proc->variables[i]->name == var_name && proc->variables[i]->type != DataType::FreeSpace){
@@ -317,10 +320,8 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
         std::cout << "error: variable not found" << std::endl;
         return;
     }
-    //   - insert `value` into `memory` at physical address
     
-    
-    //get element size based on data type
+    // get element size based on underlying data type for offset calculation
     uint32_t element_size = 0;
     switch(var->type){
         case DataType::Char:
@@ -345,24 +346,28 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
             element_size = 1;
             break;
     }
+    
+    // Prevent writing outside the bounds of the allocated array
     uint32_t total_elements = var->size / element_size;
     if (offset >= total_elements) {
         std::cout << "error: index out of range" << std::endl;
         return;
     }
 
-    uint32_t virtual_address = var-> virtual_address + (element_size * offset); // calculate virtual address
+    // calculate precise virtual address with the offset
+    uint32_t virtual_address = var-> virtual_address + (element_size * offset); 
     
+    // Convert to physical frame mapping
     int physical_add = page_table->getPhysicalAddress(pid, virtual_address);
     if(physical_add == -1){
         std::cout << "error: invalid address" << std::endl;
         return;
     }
 
-    // Unmask the void pointer back into a C++ string
+    // Unmask the generic void pointer back into a readable C++ string
     std::string value_str = *(static_cast<std::string*>(value));
 
-    // copy value to memory
+    // Convert string to correct numeric type and copy directly into physical memory
     try {
         if (var->type == DataType::Char) {
             char val = value_str[0]; 
@@ -391,10 +396,8 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
 
 void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table)
 {
-    // TODO: implement this!
-    //   - remove entry from MMU
-    //   - free page if this variable was the only one on a given page
-  Process* proc = mmu->getProcess(pid);
+    // Validate process exists
+    Process* proc = mmu->getProcess(pid);
     if (proc == nullptr){
         std::cout << "error: process not found" << std::endl;
         return;
@@ -404,7 +407,7 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
     uint32_t var_size = 0;
     bool found = false;
 
-    // Iterator i
+    // Locate target variable and convert it back into recyclable FreeSpace
     for (auto i = proc->variables.begin(); i != proc->variables.end(); ++i) {
         if ((*i)->name == var_name && (*i)->type != DataType::FreeSpace) {
             var_address = (*i)->virtual_address;
@@ -417,18 +420,22 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
         }
     }
 
+    // Abort if variable wasn't present
     if (!found) {
         std::cout << "error: variable not found" << std::endl;
         return;
     }
 
+    // Determine the page boundary span of the newly freed memory
     uint32_t page_size = page_table->getPageSize();
     uint32_t start_page = var_address / page_size;
     uint32_t end_page = (var_address + var_size - 1) / page_size;
 
+    // Evaluate each freed page to see if it can be completely unmapped
     for (uint32_t current_page = start_page; current_page <= end_page; ++current_page) {
         bool page_in_use = false;
 
+        // Check against every other active variable in the process
         for (int i = 0; i < proc->variables.size(); ++i) {
             Variable* rem_var = proc->variables[i];
             
@@ -437,12 +444,14 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
             uint32_t rem_start = rem_var->virtual_address / page_size;
             uint32_t rem_end = (rem_var->virtual_address + rem_var->size - 1) / page_size;
 
+            // If an active variable overlaps this page, flag it as in use
             if (current_page >= rem_start && current_page <= rem_end) {
                 page_in_use = true;
                 break; 
             }
         }
 
+        // Only free the physical frame if it is entirely unoccupied
         if (!page_in_use) {
             page_table->removeEntry(pid, current_page); 
         }
@@ -451,18 +460,20 @@ void freeVariable(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_
 
 void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table)
 {
+    // Validate process exists before attempting termination
     Process* proc = mmu->getProcess(pid);
     if (proc == nullptr){
         std::cout << "error: process not found" << std::endl;
         return;
     }
-     //Notes: we just want to loop through and free all variables associated with the process,
-    // then we can call the removeProcess function to remove the process 
-    //and all of its pages from the MMU and page table.
+    
+    // Fetch all active variables and sequentially free them
     std::vector<std::string> var_names = mmu->getVariableNamesForProcess(pid);
     for(int i = 0; i < var_names.size(); i++){
         freeVariable(pid, var_names[i], mmu, page_table);
     }
+    
+    // Once memory is flushed, destroy the process tracker entirely
     mmu->removeProcess(pid);
 }
 
@@ -470,12 +481,14 @@ void terminateProcess(uint32_t pid, Mmu *mmu, PageTable *page_table)
 
 void printVariableValue(uint32_t pid, std::string var_name, Mmu *mmu, PageTable *page_table, uint8_t *memory)
 {
+    // Validate process existence
     Process* proc = mmu->getProcess(pid);
     if(proc == nullptr) {
         std::cout << "error: process not found" << std::endl;
         return;
     }
 
+    // Locate variable by name
     Variable *var = nullptr;
     for (int i = 0; i < proc->variables.size(); i++){
         if(proc->variables[i]->name == var_name){
@@ -488,7 +501,7 @@ void printVariableValue(uint32_t pid, std::string var_name, Mmu *mmu, PageTable 
         return;
     }
 
-    
+    // Identify underlying data type size for memory extraction
     uint32_t element_size = 0;
     switch(var->type){
         case DataType::Char:element_size = 1; 
@@ -507,9 +520,11 @@ void printVariableValue(uint32_t pid, std::string var_name, Mmu *mmu, PageTable 
         break;
     }
 
+    // Calculate display limit (maximum 4 array elements)
     int total_elements = var->size / element_size;
     int print_limit = (total_elements > 4) ? 4 : total_elements;
 
+    // Loop through elements, translating and extracting each one
     for (int i = 0; i < print_limit; i++) {
         uint32_t virtual_address = var->virtual_address + (i * element_size);
         int physical_add = page_table->getPhysicalAddress(pid, virtual_address);
@@ -519,7 +534,7 @@ void printVariableValue(uint32_t pid, std::string var_name, Mmu *mmu, PageTable 
             return;
         }
 
-        // Extract the bytes into the correct C++ variable type and print
+        // Extract raw bytes into the correct C++ variable type and print
         if (var->type == DataType::Char) {
             char val; 
             memcpy(&val, &memory[physical_add], element_size);
@@ -546,11 +561,13 @@ void printVariableValue(uint32_t pid, std::string var_name, Mmu *mmu, PageTable 
             std::cout << val;
         }
 
+        // Format with commas, suppressing the final trailing comma
         if (i < print_limit - 1) {
             std::cout << ", ";
         }
     }
 
+    // Append truncation suffix if the array exceeded the print limit
     if (total_elements > 4) {
         std::cout << ", ... [" << total_elements << " items]";
     }
