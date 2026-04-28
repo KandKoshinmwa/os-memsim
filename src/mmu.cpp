@@ -40,8 +40,9 @@ void Mmu::addVariableToProcess(uint32_t pid, std::string var_name, DataType type
         return p != nullptr && p->pid == pid; 
     });
 
-    if (proc != NULL)//it != _processes.end()
+   if (it != _processes.end())
     {
+        proc = *it; // Assign proc here!
         Variable *var = new Variable();
         var->name = var_name;
         var->type = type;

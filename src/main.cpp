@@ -214,14 +214,14 @@ void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_
 size *= num_elements;
 
 //find the first free hole
-uint32_t allocated_size = 0;
+uint32_t allocated_address = 0;
 bool found = false;
 
 for (int i = 0; i < proc->variables.size(); i++){
     Variable* var = proc->variables[i];
     
     if(var->type == DataType::FreeSpace && var->size >= size){
-        allocated_size = var->virtual_address;
+        allocated_address = var->virtual_address;
 
         //shrink the free space variable
         var->virtual_address += size;
@@ -242,19 +242,24 @@ if(!found){
             last_address = end_address;
         }
     }
-    allocated_size = last_address;
+    allocated_address = last_address;
 
     //add page table entry for new page
-    int page_needed = (size + page_table->getPageSize() - 1) / page_table->getPageSize();
-    int start_page = allocated_size / page_table->getPageSize();
-    for(int i = 0; i < page_needed; i++){
-        page_table->addEntry(pid, start_page + i);
+    uint32_t start_page = allocated_address / page_table->getPageSize();
+    //added end_page to make sure we are finding the page in case the byte size goes over multiple pages.
+    uint32_t end_page = (allocated_address + size - 1) / page_table->getPageSize();
+    //changed loop to start at the starting page until the ending page.
+    for(uint32_t current_page = start_page; current_page <= end_page; current_page++){
+        uint32_t physical_address = current_page * page_table->getPageSize();
+         if(page_table->getPhysicalAddress(pid, physical_address) == -1){
+            page_table->addEntry(pid, current_page);
+         }
     }
 }
 
     //print and insert MMU entry
-    mmu->addVariableToProcess(pid, var_name, type, size, allocated_size);
-    std::cout << allocated_size << std::endl;
+    mmu->addVariableToProcess(pid, var_name, type, size, allocated_address);
+    std::cout << allocated_address << std::endl;
 }
 
 
