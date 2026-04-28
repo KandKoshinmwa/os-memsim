@@ -185,14 +185,14 @@ void createProcess(int text_size, int data_size, Mmu *mmu, PageTable *page_table
 {
     // TODO: implement this!
     //   - create new process in the MMU
-        uint32_t pid = mmu->createProcess();
+    uint32_t pid = mmu->createProcess();
     //   - allocate new variables for the <TEXT>, <GLOBALS>, and <STACK>
     //NOTE: will need to implement allocateVariable() first for this to work
     allocateVariable(pid, "<TEXT>", DataType::Char, text_size, mmu, page_table);
     allocateVariable(pid, "<GLOBALS>", DataType::Char, data_size, mmu, page_table);
-    allocateVariable(pid, "<STACK>", DataType::Char, 1024, mmu, page_table);
+    allocateVariable(pid, "<STACK>", DataType::Char, 65536, mmu, page_table);
 
-    std::cout << "Created process with PID: " << pid << std::endl;
+    std::cout << pid << std::endl;
 }
 
 void allocateVariable(uint32_t pid, std::string var_name, DataType type, uint32_t num_elements, Mmu *mmu, PageTable *page_table)
@@ -239,55 +239,66 @@ size *= num_elements;
 //find the first free hole
 uint32_t allocated_address = 0;
 bool found = false;
+Variable* target_free_space = nullptr; // Track the hole so we can safely shrink it later
 
 for (int i = 0; i < proc->variables.size(); i++){
     Variable* var = proc->variables[i];
     
     if(var->type == DataType::FreeSpace && var->size >= size){
         allocated_address = var->virtual_address;
-
-        //shrink the free space variable
-        var->virtual_address += size;
-        var->size -= size;
-
+        target_free_space = var;
         found = true;
-        break;
+        break; // First fit algorithm
     }
 }
 
-//if no free hole found, allocate new page
+//if no free hole found, we are out of memory print an error message
 if(!found){
-    //find last variable and allocate after it
-    uint32_t last_address = 0;
-    for (int i = 0; i < proc->variables.size(); i++){
-        uint32_t end_address = proc->variables[i]->virtual_address + proc->variables[i]->size;
-        if(end_address > last_address){
-            last_address = end_address;
-        }
-    }
-    allocated_address = last_address;
-
-    //add page table entry for new page
-    uint32_t start_page = allocated_address / page_table->getPageSize();
-    //added end_page to make sure we are finding the page in case the byte size goes over multiple pages.
-    uint32_t end_page = (allocated_address + size - 1) / page_table->getPageSize();
-    //changed loop to start at the starting page until the ending page.
-    for(uint32_t current_page = start_page; current_page <= end_page; current_page++){
-        uint32_t physical_address = current_page * page_table->getPageSize();
-         if(page_table->getPhysicalAddress(pid, physical_address) == -1){
-            page_table->addEntry(pid, current_page);
-         }
-    }
+    std::cout << "error: out of memory" << std::endl;
+        return;
 }
 
-    //print and insert MMU entry
-    mmu->addVariableToProcess(pid, var_name, type, size, allocated_address);
+// Check if it does not exceed mem size
+if (allocated_address + size > PHYSICAL_MEMORY) {
+        std::cout << "error: out of memory" << std::endl;
+        return; 
+}
+
+// Safe to Shrink the free space
+
+target_free_space->virtual_address += size;
+target_free_space->size -= size;
+
+
+//add page table entry for new page
+uint32_t start_page = allocated_address / page_table->getPageSize();
+//added end_page to make sure we are finding the page in case the byte size goes over multiple pages.
+uint32_t end_page = (allocated_address + size - 1) / page_table->getPageSize();
+
+
+//changed loop to start at the starting page until the ending page.
+for(uint32_t current_page = start_page; current_page <= end_page; current_page++){
+    uint32_t physical_address = current_page * page_table->getPageSize();
+
+    // If page does not exist yet, allocate a new one
+        if(page_table->getPhysicalAddress(pid, physical_address) == -1){
+        page_table->addEntry(pid, current_page);
+        }
+}
+
+
+//print and insert MMU entry
+mmu->addVariableToProcess(pid, var_name, type, size, allocated_address);
+//Only print address
+if (var_name != "<TEXT>" && var_name != "<GLOBALS>" && var_name != "<STACK>") {
     std::cout << allocated_address << std::endl;
+}
 }
 
 
 void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *value, Mmu *mmu, PageTable *page_table, uint8_t *memory)
 {
+    
     //get process
     Process* proc = mmu->getProcess(pid);
     if(proc == nullptr){
@@ -297,7 +308,7 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
     //   - look up physical address for variable based on its virtual address / offset
     Variable *var = nullptr;
     for (int i = 0; i < proc->variables.size(); i++){
-        if(proc->variables[i]->name == var_name){
+        if(proc->variables[i]->name == var_name && proc->variables[i]->type != DataType::FreeSpace){
             var = proc->variables[i];
             break;
         }
@@ -347,7 +358,34 @@ void setVariable(uint32_t pid, std::string var_name, uint32_t offset, void *valu
         std::cout << "error: invalid address" << std::endl;
         return;
     }
-    memcpy(&memory[physical_add], value, element_size); // copy value to memory
+
+    // Unmask the void pointer back into a C++ string
+    std::string value_str = *(static_cast<std::string*>(value));
+
+    // copy value to memory
+    try {
+        if (var->type == DataType::Char) {
+            char val = value_str[0]; 
+            memcpy(&memory[physical_add], &val, element_size);
+        } else if (var->type == DataType::Short) {
+            short val = (short)std::stoi(value_str); 
+            memcpy(&memory[physical_add], &val, element_size);
+        } else if (var->type == DataType::Int) {
+            int val = std::stoi(value_str); 
+            memcpy(&memory[physical_add], &val, element_size);
+        } else if (var->type == DataType::Float) {
+            float val = std::stof(value_str); 
+            memcpy(&memory[physical_add], &val, element_size);
+        } else if (var->type == DataType::Long) {
+            long long val = std::stoll(value_str);
+            memcpy(&memory[physical_add], &val, element_size);
+        } else if (var->type == DataType::Double) {
+            double val = std::stod(value_str); 
+            memcpy(&memory[physical_add], &val, element_size);
+        }
+    } catch (...) {
+        std::cout << "error: invalid data format" << std::endl;
+    }
 }   
 
 

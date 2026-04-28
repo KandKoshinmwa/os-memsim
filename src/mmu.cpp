@@ -33,8 +33,8 @@ uint32_t Mmu::createProcess()
 
 void Mmu::addVariableToProcess(uint32_t pid, std::string var_name, DataType type, uint32_t size, uint32_t address)
 {
-    int i;
-    Process *proc = NULL;
+    //int i;
+    //Process *proc = NULL;
     std::vector<Process*>::iterator it = std::find_if(_processes.begin(), _processes.end(), [pid](Process* p)
     { 
         return p != nullptr && p->pid == pid; 
@@ -42,7 +42,7 @@ void Mmu::addVariableToProcess(uint32_t pid, std::string var_name, DataType type
 
    if (it != _processes.end())
     {
-        proc = *it; // Assign proc here!
+        Process *proc = *it; 
         Variable *var = new Variable();
         var->name = var_name;
         var->type = type;
@@ -66,7 +66,7 @@ void Mmu::print()
             // TODO: print all variables (excluding those of type DataType::FreeSpace)
             if (var->type != DataType::FreeSpace)
             {
-                printf("%-5d | %-13s |   0x%08x | %10d\n", 
+                printf("%-5d | %-13s |   0x%08X | %10d\n", 
                        _processes[i]->pid, 
                        var->name.c_str(),     // Remember .c_str() for std::string!
                        var->virtual_address, 
@@ -98,7 +98,9 @@ std::vector<std::string> Mmu::getVariableNamesForProcess(uint32_t pid)
         {
             for (int j = 0; j < _processes[i]->variables.size(); j++)
             {
-                names.push_back(_processes[i]->variables[j]->name);
+                if (_processes[i]->variables[j]->type != DataType::FreeSpace) {
+                    names.push_back(_processes[i]->variables[j]->name);
+                }
             }
             break;
         }
